@@ -20,11 +20,16 @@
   "packageManager": "npm@11.6.2",
   "scripts": {
     "clean": "node scripts/tooling/clean-artifacts.mjs",
-    "typecheck": "npm run typecheck:src",
+    "typecheck": "npm run typecheck:src && npm run typecheck:visual-runtime",
     "typecheck:src": "tsc -p tsconfig.src.json --noEmit",
+    "typecheck:visual-runtime": "tsc -p tsconfig.visual-runtime.json --noEmit",
     "build": "npm run clean && npm run build:src && npm run build:metadata",
     "build:src": "tsc -p tsconfig.src.json",
+    "build:visual-runtime:frontend": "vite build --config apps/visual-runtime/frontend/vite.config.mts",
     "build:metadata": "node scripts/tooling/build-metadata.mjs",
+    "dev:visual-runtime:frontend": "vite --config apps/visual-runtime/frontend/vite.config.mts",
+    "dev:visual-runtime:backend": "tsx apps/visual-runtime/backend/src/server.ts",
+    "verify:visual-runtime": "npm run typecheck:visual-runtime && npm run build:visual-runtime:frontend && node scripts/tooling/verify-visual-runtime-scaffold.mjs",
     "lint": "eslint .",
     "format:check": "prettier . --check",
     "format": "prettier . --write",
@@ -43,12 +48,21 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.1",
     "@vitest/coverage-v8": "^4.0.8",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "prettier": "^3.6.2",
+    "tsx": "4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
+    "vite": "8.0.11",
     "vitest": "^4.0.8"
+  },
+  "dependencies": {
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   }
 }

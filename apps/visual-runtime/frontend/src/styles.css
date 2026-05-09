@@ -1,0 +1,157 @@
+:root {
+  color: #e9edf5;
+  background: #101419;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.runtime-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px), #101419;
+  background-size: 56px 56px;
+}
+
+.runtime-viewport {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  padding: 24px;
+}
+
+.viewport-frame {
+  position: relative;
+  width: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid rgba(164, 186, 214, 0.28);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 28% 26%, rgba(124, 179, 179, 0.24), transparent 32%),
+    linear-gradient(135deg, #1a2528, #15191f 48%, #22231d);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.viewport-grid {
+  position: absolute;
+  inset: 12%;
+  border: 1px solid rgba(180, 205, 218, 0.22);
+  background:
+    linear-gradient(90deg, rgba(230, 241, 245, 0.12) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(230, 241, 245, 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(720px) rotateX(62deg);
+  transform-origin: center bottom;
+}
+
+.runtime-badge {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  border: 1px solid rgba(213, 218, 187, 0.44);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: rgba(15, 21, 24, 0.84);
+  color: #e5e1b8;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.runtime-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  border-left: 1px solid rgba(164, 186, 214, 0.18);
+  padding: 28px;
+  background: rgba(16, 20, 25, 0.92);
+}
+
+.runtime-panel header p {
+  margin: 0 0 6px;
+  color: #9fb4c8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.runtime-panel h1 {
+  margin: 0;
+  color: #f4f0da;
+  font-size: 1.85rem;
+  letter-spacing: 0;
+}
+
+.status-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.status-list div,
+.surface-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  border-bottom: 1px solid rgba(164, 186, 214, 0.16);
+}
+
+.status-list dt,
+.surface-list span {
+  color: #a9b8c4;
+  font-size: 0.86rem;
+}
+
+.status-list dd,
+.surface-list strong {
+  margin: 0;
+  color: #f0f4f8;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.surface-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 840px) {
+  .runtime-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .runtime-panel {
+    border-top: 1px solid rgba(164, 186, 214, 0.18);
+    border-left: 0;
+  }
+}
