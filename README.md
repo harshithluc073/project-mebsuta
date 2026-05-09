@@ -79,6 +79,8 @@ It includes:
 - Local build, scan, and verification tooling.
 - MIT license.
 
+The local release is intended for source review, TypeScript validation, tests, build checks, and safety/security scans. It does not currently expose a top-level command that starts a finished interactive browser app, hosted API server, production database, or public authentication product.
+
 It does not include:
 
 - Internal planning documents.
@@ -88,6 +90,7 @@ It does not include:
 - Dependency folders.
 - Local environment files.
 - Hosted deployment configuration.
+- Paid CI/CD configuration.
 
 ## Important Boundary
 
@@ -100,6 +103,7 @@ This repository is not currently:
 - A complete public login/authentication product.
 - A cloud deployment template.
 - A live robotics controller.
+- A turnkey production SaaS deployment.
 
 It is a local source foundation for the architecture and contracts behind those kinds of systems.
 
@@ -107,13 +111,16 @@ It is a local source foundation for the architecture and contracts behind those 
 
 - Node.js `24.11.0` or compatible with `>=24.11.0 <26`
 - npm `>=11.0.0`
+- Package manager target: `npm@11.6.2`
 
 The repository includes `.node-version`, `.nvmrc`, and `package-lock.json` to make local setup predictable.
 
 ## Install
 
+Install dependencies from the checked-in lockfile:
+
 ```bash
-npm install
+npm ci
 ```
 
 ## Verify Locally
@@ -135,6 +142,26 @@ npm run scan:secrets
 npm run scan:placeholders
 ```
 
+## Available Scripts
+
+- `npm run clean` removes generated local build output.
+- `npm run typecheck` runs the source TypeScript check.
+- `npm run build` cleans, compiles source, and writes local build metadata.
+- `npm run lint` runs ESLint.
+- `npm run format:check` checks formatting.
+- `npm run format` writes formatting changes.
+- `npm run test` runs the Vitest suite.
+- `npm run test:unit` runs unit tests.
+- `npm run test:contracts` runs contract tests.
+- `npm run test:boundary` runs boundary tests.
+- `npm run test:security` runs security tests.
+- `npm run test:safety` runs safety tests.
+- `npm run coverage` runs coverage locally.
+- `npm run audit:dependencies` runs an npm high-severity dependency audit.
+- `npm run scan:secrets` scans for secret-like content.
+- `npm run scan:placeholders` scans for placeholder markers.
+- `npm run verify:tooling` runs the main local verification chain.
+
 ## Project Structure
 
 ```text
@@ -155,12 +182,15 @@ Baseline verification does not require:
 - A cloud account.
 - A third-party auth provider.
 - A paid observability service.
+- Paid CI/CD.
 - A model-provider API key.
 - A deployed frontend or backend.
 
+Generated or local-only artifacts such as `node_modules`, `dist`, `coverage`, logs, temporary folders, `.env` files, and local caches must stay out of Git.
+
 ## Security
 
-Do not commit secrets, tokens, credentials, `.env` files, generated artifacts, logs, dependency folders, or local machine output.
+Do not commit secrets, tokens, credentials, `.env` files, generated artifacts, logs, dependency folders, or local machine output. Baseline local verification should not require real service credentials.
 
 Use the built-in secret scan before publishing changes:
 
