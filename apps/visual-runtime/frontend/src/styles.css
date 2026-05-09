@@ -442,13 +442,50 @@ dd {
   gap: 10px;
 }
 
-.oops-grid div {
+.oops-grid div,
+.observation-grid div {
   display: grid;
   gap: 6px;
   border: 1px solid rgba(213, 221, 217, 0.12);
   border-radius: 6px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.025);
+}
+
+.observation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.observation-grid span,
+.boundary-row span {
+  color: #9aa9a7;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.observation-grid strong {
+  color: #eef3f1;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.boundary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.boundary-row span {
+  border: 1px solid rgba(135, 194, 144, 0.34);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(44, 119, 71, 0.18);
+  color: #bff0c7;
 }
 
 .oops-grid strong {
@@ -535,6 +572,7 @@ dd {
   .metric-grid,
   .panel-grid,
   .demo-task-controls,
+  .observation-grid,
   .oops-grid {
     grid-template-columns: 1fr;
   }

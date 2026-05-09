@@ -5,6 +5,7 @@ import {
   VisualRuntimeTelemetryEvent,
   VisualRuntimeValidationGate,
 } from "./demo_contracts";
+import { VisualRuntimeSensorPacket } from "./observation_contracts";
 
 export type VisualRuntimeProviderPlanningMode = "demo_ready" | "provider_ready";
 
@@ -15,7 +16,8 @@ export type VisualRuntimeProviderPlanningSource =
 
 export interface VisualRuntimeProviderPlanningRequest {
   readonly schemaVersion: "vr-07-provider-plan-v1";
-  readonly task: VisualRuntimeDemoTask;
+  readonly task: Pick<VisualRuntimeDemoTask, "id" | "label" | "operatorText">;
+  readonly sensorPacket: VisualRuntimeSensorPacket;
   readonly allowedObservationSummary: readonly string[];
   readonly browserReceivesProviderKey: false;
 }

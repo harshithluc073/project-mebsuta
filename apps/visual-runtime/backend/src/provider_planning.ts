@@ -4,6 +4,7 @@ import {
   loadVisualRuntimeProviderReadiness,
 } from "./config/provider_config";
 import { createVisualRuntimeDemoRun } from "./demo_runtime";
+import { createVisualRuntimeSensorPacket } from "./observation_firewall";
 import {
   VisualRuntimeDemoTask,
   VisualRuntimePlanStep,
@@ -47,8 +48,8 @@ const createTimestamp = (options: VisualRuntimeStructuredPlanningOptions): strin
 
 const createAllowedObservationSummary = (task: VisualRuntimeDemoTask): readonly string[] => [
   `Operator task: ${task.operatorText}`,
-  `Visible target object: ${task.targetObjectId}`,
-  `Visible target zone: ${task.targetZoneId}`,
+  `Preset task label: ${task.label}`,
+  "Visible scene details are available only through the sensor packet observations.",
   "Hidden simulator truth is excluded from provider planning.",
 ];
 
@@ -179,7 +180,15 @@ export const createVisualRuntimeStructuredPlanningRun = async (
 
   const request: VisualRuntimeProviderPlanningRequest = {
     schemaVersion: "vr-07-provider-plan-v1",
-    task,
+    task: {
+      id: task.id,
+      label: task.label,
+      operatorText: task.operatorText,
+    },
+    sensorPacket: createVisualRuntimeSensorPacket({
+      taskId: task.id,
+      now: () => timestamp,
+    }),
     allowedObservationSummary: createAllowedObservationSummary(task),
     browserReceivesProviderKey: false,
   };

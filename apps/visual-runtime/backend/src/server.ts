@@ -6,6 +6,7 @@ import {
   loadVisualRuntimeProviderReadiness,
 } from "./config/provider_config";
 import { createVisualRuntimeDemoRun } from "./demo_runtime";
+import { createVisualRuntimeSensorPacket } from "./observation_firewall";
 import {
   VisualRuntimeProviderPlanTransport,
   createVisualRuntimeStructuredPlanningRun,
@@ -149,6 +150,18 @@ export const createVisualRuntimeServer = (options: VisualRuntimeServerOptions = 
             browserReceivesProviderKey: false,
           });
         });
+      return;
+    }
+
+    if (pathname === "/observation/packet") {
+      writeJson(
+        response,
+        200,
+        createVisualRuntimeSensorPacket({
+          taskId: requestUrl.searchParams.get("taskId") ?? undefined,
+          now: options.now,
+        }),
+      );
       return;
     }
 

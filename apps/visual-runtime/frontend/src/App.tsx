@@ -7,6 +7,7 @@ import {
   VisualRuntimeDemoTask,
   VisualRuntimeDemoTaskId,
 } from "../../shared/src/demo_contracts";
+import { VisualRuntimeSensorPacket } from "../../shared/src/observation_contracts";
 import { VISUAL_RUNTIME_APP_DECISION } from "../../shared/src/runtime_contracts";
 import { RobotWorldViewer } from "./components/RobotWorldViewer";
 
@@ -43,6 +44,62 @@ interface DemoTasksResponse {
   readonly tasks: readonly VisualRuntimeDemoTask[];
   readonly browserReceivesProviderKey: false;
 }
+
+const fallbackSensorPacket: VisualRuntimeSensorPacket = {
+  packetId: "vr-08-awaiting-backend",
+  task: {
+    id: DEFAULT_VISUAL_RUNTIME_DEMO_TASK.id,
+    label: DEFAULT_VISUAL_RUNTIME_DEMO_TASK.label,
+    operatorText: DEFAULT_VISUAL_RUNTIME_DEMO_TASK.operatorText,
+  },
+  observations: [
+    {
+      channel: "visual_summary",
+      label: "Visible scene",
+      value: "Awaiting local backend packet; hidden simulator truth stays blocked.",
+    },
+    {
+      channel: "proprioception",
+      label: "Robot body",
+      value: "Awaiting local backend packet; no privileged coordinates exposed.",
+    },
+    {
+      channel: "contact",
+      label: "Contact",
+      value: "Awaiting local backend packet; contact state is limited to safe summaries.",
+    },
+    {
+      channel: "audio",
+      label: "Audio",
+      value: "Awaiting local backend packet; no private logs or raw provider data are present.",
+    },
+    {
+      channel: "task_context",
+      label: "Task",
+      value: DEFAULT_VISUAL_RUNTIME_DEMO_TASK.operatorText,
+    },
+    {
+      channel: "memory_snippet",
+      label: "Memory",
+      value: "Local demo memory is limited to prior safe task summaries.",
+    },
+  ],
+  boundary: {
+    allowedChannels: ["visual_summary", "proprioception", "contact", "audio", "task_context", "memory_snippet"],
+    redactedFields: [
+      "worldSnapshot.hiddenSimulatorTruthExposed",
+      "worldSnapshot.objects[].id",
+      "worldSnapshot.targetZones[].id",
+      "verification.result",
+      "provider.rawOutput",
+      "provider.credential",
+    ],
+    hiddenSimulatorTruthExposed: false,
+    backendOnlyObjectIdsExposed: false,
+    groundTruthSuccessLabelExposed: false,
+  },
+  browserReceivesProviderKey: false,
+};
 
 const API_BASE_URL = "/api";
 
@@ -132,12 +189,13 @@ export const App = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<VisualRuntimeDemoTaskId>(DEFAULT_VISUAL_RUNTIME_DEMO_TASK.id);
   const [demoRun, setDemoRun] = useState<VisualRuntimeDemoRunSnapshot | null>(null);
   const [demoRunState, setDemoRunState] = useState<"idle" | "running" | "complete">("idle");
+  const [sensorPacket, setSensorPacket] = useState<VisualRuntimeSensorPacket>(fallbackSensorPacket);
 
   useEffect(() => {
     let active = true;
 
     const refreshStatus = async () => {
-      const [runtime, provider, demoTaskResponse] = await Promise.all([
+      const [runtime, provider, demoTaskResponse, observationPacket] = await Promise.all([
         fetchJson<RuntimeStatus>("/runtime/status", fallbackRuntimeStatus),
         fetchJson<ProviderStatus>("/provider/status", fallbackProviderStatus),
         fetchJson<DemoTasksResponse>("/demo/tasks", {
@@ -145,12 +203,17 @@ export const App = () => {
           tasks: VISUAL_RUNTIME_DEMO_TASKS,
           browserReceivesProviderKey: false,
         }),
+        fetchJson<VisualRuntimeSensorPacket>(
+          `/observation/packet?taskId=${encodeURIComponent(selectedTaskId)}`,
+          fallbackSensorPacket,
+        ),
       ]);
 
       if (active) {
         setRuntimeStatus(runtime);
         setProviderStatus(provider);
         setDemoTasks(demoTaskResponse.tasks);
+        setSensorPacket(observationPacket);
       }
     };
 
@@ -159,7 +222,7 @@ export const App = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedTaskId]);
 
   const metrics = useMemo<readonly StatusTile[]>(
     () => [
@@ -204,7 +267,12 @@ export const App = () => {
       return;
     }
 
+    const observationPacket = await fetchJson<VisualRuntimeSensorPacket>(
+      `/observation/packet?taskId=${encodeURIComponent(selectedTaskId)}`,
+      fallbackSensorPacket,
+    );
     setDemoRun(run);
+    setSensorPacket(observationPacket);
     setTaskText(run.task.operatorText);
     setDemoRunState("complete");
   };
@@ -387,6 +455,29 @@ export const App = () => {
                 <li key={row}>{row}</li>
               ))}
             </ol>
+          </article>
+
+          <article className="panel span-two" data-vr08-observation-boundary="ready">
+            <h2>Observation Boundary</h2>
+            <div className="observation-grid">
+              {sensorPacket.observations.map((observation) => (
+                <div key={`${observation.channel}-${observation.label}`}>
+                  <span>{observation.label}</span>
+                  <strong>{observation.value}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="boundary-row">
+              <span data-vr08-hidden-truth={String(sensorPacket.boundary.hiddenSimulatorTruthExposed)}>
+                hidden truth blocked
+              </span>
+              <span data-vr08-backend-ids={String(sensorPacket.boundary.backendOnlyObjectIdsExposed)}>
+                backend ids blocked
+              </span>
+              <span data-vr08-success-label={String(sensorPacket.boundary.groundTruthSuccessLabelExposed)}>
+                success labels blocked
+              </span>
+            </div>
           </article>
 
           <article className="panel span-two">
