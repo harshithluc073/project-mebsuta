@@ -6,6 +6,10 @@ import {
   loadVisualRuntimeProviderReadiness,
 } from "./config/provider_config";
 import { createVisualRuntimeDemoRun } from "./demo_runtime";
+import {
+  VisualRuntimeProviderPlanTransport,
+  createVisualRuntimeStructuredPlanningRun,
+} from "./provider_planning";
 import { VISUAL_RUNTIME_DEMO_TASKS } from "../../shared/src/demo_contracts";
 import {
   VISUAL_RUNTIME_APP_DECISION,
@@ -16,6 +20,7 @@ const DEFAULT_PORT = 4178;
 
 export interface VisualRuntimeServerOptions {
   readonly providerConfigInput?: VisualRuntimeProviderConfigInput;
+  readonly providerPlanTransport?: VisualRuntimeProviderPlanTransport;
   readonly now?: () => string;
 }
 
@@ -124,6 +129,26 @@ export const createVisualRuntimeServer = (options: VisualRuntimeServerOptions = 
           now: options.now,
         }),
       );
+      return;
+    }
+
+    if (pathname === "/planning/run") {
+      void createVisualRuntimeStructuredPlanningRun({
+        taskId: requestUrl.searchParams.get("taskId") ?? undefined,
+        now: options.now,
+        providerConfigInput: options.providerConfigInput,
+        providerPlanTransport: options.providerPlanTransport,
+      })
+        .then((planningRun) => {
+          writeJson(response, 200, planningRun);
+        })
+        .catch(() => {
+          writeJson(response, 500, {
+            error: "planning_run_failed",
+            status: "local_backend_ready",
+            browserReceivesProviderKey: false,
+          });
+        });
       return;
     }
 
