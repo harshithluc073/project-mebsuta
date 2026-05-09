@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+Project Tracker/
+architecture_docs/
+production_readiness_docs/
+production_readiness_tracking/
+src/
+state_tracking/
+project_mebsuta_master_implementation_plan.md
+production_readiness_tracking/production_readiness_telemetry_hud.html
+state_tracking/telemetry_hud.html

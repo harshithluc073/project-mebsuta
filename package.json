@@ -1,0 +1,54 @@
+{
+  "name": "project-mebsuta",
+  "version": "0.1.0",
+  "description": "Production tooling foundation for Project Mebsuta source contracts.",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harshithluc073/project-mebsuta.git"
+  },
+  "bugs": {
+    "url": "https://github.com/harshithluc073/project-mebsuta/issues"
+  },
+  "homepage": "https://github.com/harshithluc073/project-mebsuta#readme",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24.11.0 <26",
+    "npm": ">=11.0.0"
+  },
+  "packageManager": "npm@11.6.2",
+  "scripts": {
+    "clean": "node scripts/tooling/clean-artifacts.mjs",
+    "typecheck": "npm run typecheck:src",
+    "typecheck:src": "tsc -p tsconfig.src.json --noEmit",
+    "build": "npm run clean && npm run build:src && npm run build:metadata",
+    "build:src": "tsc -p tsconfig.src.json",
+    "build:metadata": "node scripts/tooling/build-metadata.mjs",
+    "lint": "eslint .",
+    "format:check": "prettier . --check",
+    "format": "prettier . --write",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests --dir tests/unit",
+    "test:contracts": "vitest run --passWithNoTests --dir tests/contracts",
+    "test:boundary": "vitest run --passWithNoTests --dir tests/boundary",
+    "test:security": "vitest run --passWithNoTests --dir tests/security",
+    "test:safety": "vitest run --passWithNoTests --dir tests/safety",
+    "coverage": "vitest run --coverage --passWithNoTests",
+    "audit:dependencies": "npm audit --audit-level=high",
+    "scan:secrets": "node scripts/tooling/secret-scan.mjs",
+    "scan:placeholders": "node scripts/tooling/placeholder-scan.mjs",
+    "verify:tooling": "npm run typecheck && npm run lint && npm run test && npm run build && npm run scan:secrets && npm run scan:placeholders"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.8",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^4.0.8"
+  }
+}
