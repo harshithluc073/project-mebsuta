@@ -5,6 +5,8 @@ import {
   VisualRuntimeProviderConfigInput,
   loadVisualRuntimeProviderReadiness,
 } from "./config/provider_config";
+import { createVisualRuntimeDemoRun } from "./demo_runtime";
+import { VISUAL_RUNTIME_DEMO_TASKS } from "../../shared/src/demo_contracts";
 import {
   VISUAL_RUNTIME_APP_DECISION,
   createVisualRuntimeHealthSnapshot,
@@ -44,9 +46,9 @@ const createRuntimeStatus = (options: VisualRuntimeServerOptions) => {
     status: "local_backend_ready",
     mode: providerStatus.mode,
     localOnly: true,
-    commandBoundary: "scaffolded",
-    worldSnapshotBoundary: "pending_visual_runtime_scene",
-    eventStreamBoundary: "pending_runtime_events",
+    commandBoundary: "deterministic_demo_ready",
+    worldSnapshotBoundary: "visual_scene_snapshot_ready",
+    eventStreamBoundary: "demo_telemetry_snapshot_ready",
     browserReceivesProviderKey: false,
     timestamp: createTimestamp(options),
   } as const;
@@ -66,9 +68,15 @@ const normalizePath = (request: IncomingMessage): string => {
   return new URL(request.url ?? "/", `http://${host}`).pathname;
 };
 
+const createRequestUrl = (request: IncomingMessage): URL => {
+  const host = request.headers.host ?? "127.0.0.1";
+  return new URL(request.url ?? "/", `http://${host}`);
+};
+
 export const createVisualRuntimeServer = (options: VisualRuntimeServerOptions = {}): Server =>
   createServer((request, response) => {
     const pathname = normalizePath(request);
+    const requestUrl = createRequestUrl(request);
 
     if (request.method !== "GET") {
       writeJson(response, 405, {
@@ -95,6 +103,27 @@ export const createVisualRuntimeServer = (options: VisualRuntimeServerOptions = 
 
     if (pathname === "/app-decision") {
       writeJson(response, 200, VISUAL_RUNTIME_APP_DECISION);
+      return;
+    }
+
+    if (pathname === "/demo/tasks") {
+      writeJson(response, 200, {
+        mode: "demo_ready",
+        tasks: VISUAL_RUNTIME_DEMO_TASKS,
+        browserReceivesProviderKey: false,
+      });
+      return;
+    }
+
+    if (pathname === "/demo/run") {
+      writeJson(
+        response,
+        200,
+        createVisualRuntimeDemoRun({
+          taskId: requestUrl.searchParams.get("taskId") ?? undefined,
+          now: options.now,
+        }),
+      );
       return;
     }
 

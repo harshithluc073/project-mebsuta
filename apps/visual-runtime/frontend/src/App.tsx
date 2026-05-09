@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  DEFAULT_VISUAL_RUNTIME_DEMO_TASK,
+  VISUAL_RUNTIME_DEMO_TASKS,
+  VisualRuntimeDemoRunSnapshot,
+  VisualRuntimeDemoTask,
+  VisualRuntimeDemoTaskId,
+} from "../../shared/src/demo_contracts";
 import { VISUAL_RUNTIME_APP_DECISION } from "../../shared/src/runtime_contracts";
 import { RobotWorldViewer } from "./components/RobotWorldViewer";
 
@@ -31,14 +38,20 @@ interface StatusTile {
   readonly tone: PanelTone;
 }
 
+interface DemoTasksResponse {
+  readonly mode: "demo_ready";
+  readonly tasks: readonly VisualRuntimeDemoTask[];
+  readonly browserReceivesProviderKey: false;
+}
+
 const API_BASE_URL = "/api";
 
 const fallbackRuntimeStatus: RuntimeStatus = {
   status: "local_backend_unavailable",
   mode: "demo_ready",
   commandBoundary: "awaiting_backend",
-  worldSnapshotBoundary: "pending_visual_runtime_scene",
-  eventStreamBoundary: "pending_runtime_events",
+  worldSnapshotBoundary: "awaiting_demo_snapshot",
+  eventStreamBoundary: "awaiting_demo_telemetry",
   browserReceivesProviderKey: false,
 };
 
@@ -80,6 +93,9 @@ const traceRows = [
 
 const toStatusText = (value: boolean): string => (value ? "yes" : "no");
 
+const toPillTone = (state: string): PanelTone =>
+  state === "complete" || state === "passed" ? "ready" : state === "blocked" ? "hold" : "pending";
+
 const fetchJson = async <T,>(path: string, fallback: T): Promise<T> => {
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -109,22 +125,32 @@ const MetricTile = ({ tile }: { readonly tile: StatusTile }) => (
 );
 
 export const App = () => {
-  const [taskText, setTaskText] = useState("Inspect the work cell and wait for a validated task.");
+  const [taskText, setTaskText] = useState(DEFAULT_VISUAL_RUNTIME_DEMO_TASK.operatorText);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>(fallbackRuntimeStatus);
   const [providerStatus, setProviderStatus] = useState<ProviderStatus>(fallbackProviderStatus);
+  const [demoTasks, setDemoTasks] = useState<readonly VisualRuntimeDemoTask[]>(VISUAL_RUNTIME_DEMO_TASKS);
+  const [selectedTaskId, setSelectedTaskId] = useState<VisualRuntimeDemoTaskId>(DEFAULT_VISUAL_RUNTIME_DEMO_TASK.id);
+  const [demoRun, setDemoRun] = useState<VisualRuntimeDemoRunSnapshot | null>(null);
+  const [demoRunState, setDemoRunState] = useState<"idle" | "running" | "complete">("idle");
 
   useEffect(() => {
     let active = true;
 
     const refreshStatus = async () => {
-      const [runtime, provider] = await Promise.all([
+      const [runtime, provider, demoTaskResponse] = await Promise.all([
         fetchJson<RuntimeStatus>("/runtime/status", fallbackRuntimeStatus),
         fetchJson<ProviderStatus>("/provider/status", fallbackProviderStatus),
+        fetchJson<DemoTasksResponse>("/demo/tasks", {
+          mode: "demo_ready",
+          tasks: VISUAL_RUNTIME_DEMO_TASKS,
+          browserReceivesProviderKey: false,
+        }),
       ]);
 
       if (active) {
         setRuntimeStatus(runtime);
         setProviderStatus(provider);
+        setDemoTasks(demoTaskResponse.tasks);
       }
     };
 
@@ -145,12 +171,12 @@ export const App = () => {
       {
         label: "Mode",
         value: runtimeStatus.mode,
-        tone: runtimeStatus.mode === "provider_ready" ? "ready" : "quiet",
+        tone: runtimeStatus.mode === "provider_ready" || runtimeStatus.mode === "demo_ready" ? "ready" : "quiet",
       },
       {
-        label: "Provider",
-        value: providerStatus.provider ?? "demo",
-        tone: providerStatus.providerConfigured ? "ready" : "quiet",
+        label: "Demo",
+        value: demoRunState,
+        tone: demoRunState === "complete" ? "ready" : demoRunState === "running" ? "pending" : "quiet",
       },
       {
         label: "Browser key",
@@ -158,11 +184,39 @@ export const App = () => {
         tone: "ready",
       },
     ],
-    [providerStatus.provider, providerStatus.providerConfigured, runtimeStatus.mode, runtimeStatus.status],
+    [demoRunState, runtimeStatus.mode, runtimeStatus.status],
   );
 
+  const selectedTask =
+    demoTasks.find((task) => task.id === selectedTaskId) ?? demoTasks[0] ?? DEFAULT_VISUAL_RUNTIME_DEMO_TASK;
+  const verificationEvidence = demoRun?.verification.evidence ?? ["awaiting deterministic demo task"];
+  const traceEntries = demoRun?.telemetry.map((event) => event.message) ?? traceRows;
+
+  const runDemoTask = async () => {
+    setDemoRunState("running");
+    const run = await fetchJson<VisualRuntimeDemoRunSnapshot | null>(
+      `/demo/run?taskId=${encodeURIComponent(selectedTaskId)}`,
+      null,
+    );
+
+    if (!run) {
+      setDemoRunState("idle");
+      return;
+    }
+
+    setDemoRun(run);
+    setTaskText(run.task.operatorText);
+    setDemoRunState("complete");
+  };
+
+  const resetDemoTask = () => {
+    setDemoRun(null);
+    setDemoRunState("idle");
+    setTaskText(selectedTask.operatorText);
+  };
+
   return (
-    <main className="runtime-shell" data-runtime-shell="vr-05">
+    <main className="runtime-shell" data-runtime-shell="vr-06" data-vr06-demo-run={demoRunState}>
       <section className="workspace-region" aria-label="Robot and world workspace">
         <header className="topbar">
           <div>
@@ -170,22 +224,47 @@ export const App = () => {
             <h1>Visual Runtime Console</h1>
           </div>
           <div className="topbar-actions" aria-label="Runtime command controls">
-            <button type="button">Submit</button>
-            <button type="button">Hold</button>
-            <button type="button">Reset</button>
+            <button type="button" onClick={runDemoTask}>
+              Submit
+            </button>
+            <button type="button" onClick={() => setDemoRunState("idle")}>
+              Hold
+            </button>
+            <button type="button" onClick={resetDemoTask}>
+              Reset
+            </button>
           </div>
         </header>
 
         <section className="viewport-panel" aria-label="Robot world viewport">
           <div className="viewport-header">
             <span>Robot / World</span>
-            <StatusPill tone="ready">three.js live</StatusPill>
+            <StatusPill tone={demoRunState === "complete" ? "ready" : "pending"}>{demoRunState}</StatusPill>
           </div>
-          <RobotWorldViewer />
+          <RobotWorldViewer executionPath={demoRun?.executionPath} executionRunId={demoRun?.runId} />
         </section>
 
         <section className="task-panel" aria-label="Task input panel">
           <label htmlFor="task-input">Task</label>
+          <div className="demo-task-controls">
+            <select
+              aria-label="Preset demo task"
+              value={selectedTaskId}
+              onChange={(event) => {
+                const nextTaskId = event.target.value as VisualRuntimeDemoTaskId;
+                const nextTask = demoTasks.find((task) => task.id === nextTaskId);
+                setSelectedTaskId(nextTaskId);
+                setTaskText(nextTask?.operatorText ?? taskText);
+              }}
+            >
+              {demoTasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.label}
+                </option>
+              ))}
+            </select>
+            <StatusPill tone="ready">no env required</StatusPill>
+          </div>
           <textarea
             id="task-input"
             value={taskText}
@@ -218,6 +297,10 @@ export const App = () => {
                 <dt>Model</dt>
                 <dd>{providerStatus.model ?? "demo"}</dd>
               </div>
+              <div>
+                <dt>Mode</dt>
+                <dd>{providerStatus.mode}</dd>
+              </div>
             </dl>
           </article>
 
@@ -242,11 +325,11 @@ export const App = () => {
           <article className="panel span-two">
             <h2>Plan</h2>
             <div className="row-table">
-              {planRows.map(([id, label, state]) => (
+              {(demoRun?.plan ?? planRows.map(([id, label, state]) => ({ id, label, state }))).map(({ id, label, state }) => (
                 <div key={id}>
                   <span>{id}</span>
                   <strong>{label}</strong>
-                  <StatusPill tone={state === "queued" ? "ready" : "pending"}>{state}</StatusPill>
+                  <StatusPill tone={toPillTone(state)}>{state}</StatusPill>
                 </div>
               ))}
             </div>
@@ -255,10 +338,10 @@ export const App = () => {
           <article className="panel">
             <h2>Validation</h2>
             <div className="compact-list">
-              {validationRows.map(([label, state]) => (
-                <div key={label}>
-                  <span>{label}</span>
-                  <StatusPill tone="pending">{state}</StatusPill>
+              {(demoRun?.validation ?? validationRows.map(([gate, state]) => ({ gate, state, reason: "pending" }))).map((row) => (
+                <div key={row.gate}>
+                  <span title={row.reason}>{row.gate}</span>
+                  <StatusPill tone={toPillTone(row.state)}>{row.state}</StatusPill>
                 </div>
               ))}
             </div>
@@ -267,11 +350,11 @@ export const App = () => {
           <article className="panel">
             <h2>Execution</h2>
             <div className="timeline">
-              {executionRows.map(([time, label, state]) => (
-                <div key={`${time}-${label}`}>
-                  <time>{time}</time>
-                  <span>{label}</span>
-                  <StatusPill tone={state === "ready" ? "ready" : "pending"}>{state}</StatusPill>
+              {(demoRun?.execution ?? executionRows.map(([time, label, state]) => ({ time, label, state }))).map((row) => (
+                <div key={`${row.time}-${row.label}`}>
+                  <time>{row.time}</time>
+                  <span>{row.label}</span>
+                  <StatusPill tone={toPillTone(row.state)}>{row.state}</StatusPill>
                 </div>
               ))}
             </div>
@@ -282,15 +365,17 @@ export const App = () => {
             <dl>
               <div>
                 <dt>Certificate</dt>
-                <dd>pending</dd>
+                <dd>{demoRun?.verification.certificateId ?? "pending"}</dd>
               </div>
               <div>
                 <dt>Evidence</dt>
-                <dd>awaiting task</dd>
+                <dd>{verificationEvidence[0]}</dd>
               </div>
               <div>
                 <dt>Result</dt>
-                <dd>not started</dd>
+                <dd data-vr06-verification={demoRun?.verification.result ?? "pending"}>
+                  {demoRun?.verification.result ?? "not started"}
+                </dd>
               </div>
             </dl>
           </article>
@@ -298,7 +383,7 @@ export const App = () => {
           <article className="panel">
             <h2>Event Trace</h2>
             <ol className="trace-list">
-              {traceRows.map((row) => (
+              {traceEntries.map((row) => (
                 <li key={row}>{row}</li>
               ))}
             </ol>

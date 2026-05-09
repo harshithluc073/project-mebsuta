@@ -265,6 +265,25 @@ button:nth-child(3) {
   padding: 14px;
 }
 
+.demo-task-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.demo-task-controls select {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid rgba(213, 221, 217, 0.18);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #0e1112;
+  color: #eef3f1;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
 .task-panel label {
   color: #c7d2cf;
   font-size: 0.78rem;
@@ -515,6 +534,7 @@ dd {
   .topbar-actions,
   .metric-grid,
   .panel-grid,
+  .demo-task-controls,
   .oops-grid {
     grid-template-columns: 1fr;
   }

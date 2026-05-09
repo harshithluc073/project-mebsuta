@@ -108,9 +108,13 @@ export class VisualRobotWorldScene {
   private readonly controls: OrbitControls;
   private readonly clock = new THREE.Clock();
   private readonly snapshot: VisualRuntimeWorldSnapshot = createInitialVisualRuntimeWorldSnapshot();
+  private readonly initialRobotPosition = toVector3(this.snapshot.robot.position);
   private readonly robotGroup = new THREE.Group();
   private readonly animatedRobotParts: RobotPart[] = [];
   private readonly animatedObjects: THREE.Object3D[] = [];
+  private demoExecutionPath: readonly THREE.Vector3[] = [];
+  private demoExecutionRunId = "";
+  private demoExecutionStartedAt = 0;
   private animationId = 0;
   private disposed = false;
   private frameAccumulator = 0;
@@ -125,7 +129,7 @@ export class VisualRobotWorldScene {
       preserveDrawingBuffer: true,
       powerPreference: "high-performance",
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.85));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.BasicShadowMap;
@@ -155,6 +159,18 @@ export class VisualRobotWorldScene {
     this.host.dataset.vr05Optimization = "instancing-lod-culling-ready";
     this.resize();
     this.animate();
+  }
+
+  public setDemoExecutionPath(path: readonly VisualRuntimeVector3[], runId: string): void {
+    if (runId === this.demoExecutionRunId) {
+      return;
+    }
+
+    this.demoExecutionRunId = runId;
+    this.demoExecutionPath = path.map(toVector3);
+    this.demoExecutionStartedAt = this.clock.elapsedTime;
+    this.host.dataset.vr06DemoAnimation = "active";
+    this.host.dataset.vr06ExecutionRun = runId;
   }
 
   public resize = (): void => {
@@ -427,6 +443,26 @@ export class VisualRobotWorldScene {
     this.scene.add(line);
   }
 
+  private getDemoExecutionPosition(elapsed: number): THREE.Vector3 {
+    if (this.demoExecutionPath.length < 2) {
+      return this.initialRobotPosition;
+    }
+
+    const durationSeconds = 4.8;
+    const normalizedProgress = Math.min((elapsed - this.demoExecutionStartedAt) / durationSeconds, 1);
+    const scaledProgress = normalizedProgress * (this.demoExecutionPath.length - 1);
+    const startIndex = Math.min(Math.floor(scaledProgress), this.demoExecutionPath.length - 2);
+    const segmentProgress = scaledProgress - startIndex;
+    const start = this.demoExecutionPath[startIndex]!;
+    const end = this.demoExecutionPath[startIndex + 1]!;
+
+    if (normalizedProgress >= 1) {
+      this.host.dataset.vr06DemoAnimation = "complete";
+    }
+
+    return new THREE.Vector3().lerpVectors(start, end, segmentProgress);
+  }
+
   private animate = (): void => {
     if (this.disposed) {
       return;
@@ -435,8 +471,15 @@ export class VisualRobotWorldScene {
     const delta = Math.min(this.clock.getDelta(), 0.05);
     const elapsed = this.clock.elapsedTime;
 
-    this.robotGroup.position.y = Math.sin(elapsed * 2.4) * 0.025;
-    this.robotGroup.rotation.y = Math.sin(elapsed * 0.35) * 0.08;
+    const executionPosition = this.getDemoExecutionPosition(elapsed);
+    const bob = Math.sin(elapsed * 2.4) * 0.025;
+    this.robotGroup.position.set(executionPosition.x, bob, executionPosition.z);
+    if (this.demoExecutionPath.length > 1) {
+      const nextPoint = this.getDemoExecutionPosition(elapsed + 0.08);
+      this.robotGroup.rotation.y = Math.atan2(nextPoint.x - executionPosition.x, nextPoint.z - executionPosition.z);
+    } else {
+      this.robotGroup.rotation.y = Math.sin(elapsed * 0.35) * 0.08;
+    }
     if (elapsed > 0.6) {
       this.host.dataset.vr05Animation = "active";
     }
