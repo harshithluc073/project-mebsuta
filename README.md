@@ -188,6 +188,12 @@ Baseline verification does not require:
 
 Generated or local-only artifacts such as `node_modules`, `dist`, `coverage`, logs, temporary folders, `.env` files, and local caches must stay out of Git.
 
+## Contributions
+
+Public contributions are not required for the current local source-release baseline. Issues and pull requests can be reviewed when they preserve the local-only scope, avoid secrets, and pass local verification.
+
+Contribution governance files such as `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `CHANGELOG.md` are not part of the current mandatory public file set.
+
 ## Security
 
 Do not commit secrets, tokens, credentials, `.env` files, generated artifacts, logs, dependency folders, or local machine output. Baseline local verification should not require real service credentials.
