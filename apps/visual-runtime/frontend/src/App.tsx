@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { VISUAL_RUNTIME_APP_DECISION } from "../../shared/src/runtime_contracts";
+import { RobotWorldViewer } from "./components/RobotWorldViewer";
 
 import "./styles.css";
 
@@ -74,7 +75,7 @@ const traceRows = [
   "frontend shell mounted",
   "runtime status panel ready",
   "provider status redacted",
-  "event stream reserved",
+  "three.js robot viewer active",
 ] as const;
 
 const toStatusText = (value: boolean): string => (value ? "yes" : "no");
@@ -161,7 +162,7 @@ export const App = () => {
   );
 
   return (
-    <main className="runtime-shell" data-runtime-shell="vr-04">
+    <main className="runtime-shell" data-runtime-shell="vr-05">
       <section className="workspace-region" aria-label="Robot and world workspace">
         <header className="topbar">
           <div>
@@ -178,18 +179,9 @@ export const App = () => {
         <section className="viewport-panel" aria-label="Robot world viewport">
           <div className="viewport-header">
             <span>Robot / World</span>
-            <StatusPill tone="pending">scene pending VR-05</StatusPill>
+            <StatusPill tone="ready">three.js live</StatusPill>
           </div>
-          <div className="viewport-frame">
-            <div className="world-grid" />
-            <div className="viewport-reticle" />
-            <div className="zone zone-a">inspection zone</div>
-            <div className="zone zone-b">target zone</div>
-            <div className="robot-anchor">
-              <span />
-              <strong>robot origin</strong>
-            </div>
-          </div>
+          <RobotWorldViewer />
         </section>
 
         <section className="task-panel" aria-label="Task input panel">
