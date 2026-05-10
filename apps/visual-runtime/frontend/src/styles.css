@@ -448,13 +448,51 @@ dd {
 }
 
 .oops-grid div,
-.observation-grid div {
+.observation-grid div,
+.audit-grid div {
   display: grid;
   gap: 6px;
   border: 1px solid rgba(213, 221, 217, 0.12);
   border-radius: 6px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.025);
+}
+
+.audit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.audit-grid.single-column {
+  grid-template-columns: 1fr;
+}
+
+.audit-grid span {
+  color: #9aa9a7;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.audit-grid strong {
+  color: #eef3f1;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.replay-controls button {
+  min-width: 86px;
+  background: #d4e2dc;
+  color: #111818;
 }
 
 .observation-grid {
@@ -589,6 +627,7 @@ dd {
   .panel-grid,
   .demo-task-controls,
   .observation-grid,
+  .audit-grid,
   .oops-grid {
     grid-template-columns: 1fr;
   }

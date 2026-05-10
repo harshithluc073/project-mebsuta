@@ -9,6 +9,7 @@ import {
 } from "../../shared/src/demo_contracts";
 import { VisualRuntimeExecutionGateRun } from "../../shared/src/execution_gate_contracts";
 import { VisualRuntimeSensorPacket } from "../../shared/src/observation_contracts";
+import { VisualRuntimeObservabilityAuditSnapshot } from "../../shared/src/observability_contracts";
 import { VISUAL_RUNTIME_APP_DECISION } from "../../shared/src/runtime_contracts";
 import { VisualRuntimeVerificationOopsRun } from "../../shared/src/verification_oops_contracts";
 import { RobotWorldViewer } from "./components/RobotWorldViewer";
@@ -150,6 +151,8 @@ const traceRows = [
   "three.js robot viewer active",
 ] as const;
 
+const replayControlRows = ["rewind", "step_back", "play", "step_forward", "pause"] as const;
+
 const toStatusText = (value: boolean): string => (value ? "yes" : "no");
 
 const toPillTone = (state: string): PanelTone =>
@@ -195,12 +198,13 @@ export const App = () => {
   const [retryAttemptsUsed, setRetryAttemptsUsed] = useState(0);
   const [sensorPacket, setSensorPacket] = useState<VisualRuntimeSensorPacket>(fallbackSensorPacket);
   const [verificationOops, setVerificationOops] = useState<VisualRuntimeVerificationOopsRun | null>(null);
+  const [auditSnapshot, setAuditSnapshot] = useState<VisualRuntimeObservabilityAuditSnapshot | null>(null);
 
   useEffect(() => {
     let active = true;
 
     const refreshStatus = async () => {
-      const [runtime, provider, demoTaskResponse, observationPacket] = await Promise.all([
+      const [runtime, provider, demoTaskResponse, observationPacket, observabilityAudit] = await Promise.all([
         fetchJson<RuntimeStatus>("/runtime/status", fallbackRuntimeStatus),
         fetchJson<ProviderStatus>("/provider/status", fallbackProviderStatus),
         fetchJson<DemoTasksResponse>("/demo/tasks", {
@@ -212,6 +216,10 @@ export const App = () => {
           `/observation/packet?taskId=${encodeURIComponent(selectedTaskId)}`,
           fallbackSensorPacket,
         ),
+        fetchJson<VisualRuntimeObservabilityAuditSnapshot | null>(
+          `/observability/audit?taskId=${encodeURIComponent(selectedTaskId)}&retryAttemptsUsed=${retryAttemptsUsed}`,
+          null,
+        ),
       ]);
 
       if (active) {
@@ -219,6 +227,7 @@ export const App = () => {
         setProviderStatus(provider);
         setDemoTasks(demoTaskResponse.tasks);
         setSensorPacket(observationPacket);
+        setAuditSnapshot(observabilityAudit);
       }
     };
 
@@ -227,7 +236,7 @@ export const App = () => {
     return () => {
       active = false;
     };
-  }, [selectedTaskId]);
+  }, [retryAttemptsUsed, selectedTaskId]);
 
   const metrics = useMemo<readonly StatusTile[]>(
     () => [
@@ -262,6 +271,38 @@ export const App = () => {
     demoRun?.verification.evidence ??
     ["awaiting deterministic demo task"];
   const traceEntries = demoRun?.telemetry.map((event) => event.message) ?? traceRows;
+  const auditEvents =
+    auditSnapshot?.eventStream.map((event) => event.summary) ?? [
+      "ordered audit stream awaiting backend",
+      "memory write surface armed",
+      "replay controls ready",
+    ];
+  const memoryWrites =
+    auditSnapshot?.memoryWrites ?? [
+      {
+        id: "vr-11-memory-awaiting-backend",
+        sourceCertificateId: "pending",
+        summary: "Safe memory writes will require verification certificate evidence.",
+        authority: "verification_certificate" as const,
+        committed: false,
+        hiddenSimulatorTruthExposed: false as const,
+        browserReceivesProviderKey: false as const,
+      },
+    ];
+  const planHistory =
+    auditSnapshot?.planHistory ??
+    planRows.map(([stepId, label, state]) => ({
+      id: `vr-11-plan-${stepId}`,
+      stepId,
+      label,
+      state: state === "queued" || state === "waiting" || state === "locked" ? "ready" as const : state,
+      sourceRunId: "pending",
+    }));
+  const redactedTrace =
+    auditSnapshot?.redactedTrace.map((entry) => entry.summary) ?? [
+      "trace summary awaits verified local run",
+      "provider secrets stay outside the browser",
+    ];
 
   const runDemoTask = async () => {
     setDemoRunState("running");
@@ -279,9 +320,14 @@ export const App = () => {
       `/observation/packet?taskId=${encodeURIComponent(selectedTaskId)}`,
       fallbackSensorPacket,
     );
+    const observabilityAudit = await fetchJson<VisualRuntimeObservabilityAuditSnapshot | null>(
+      `/observability/audit?taskId=${encodeURIComponent(selectedTaskId)}&retryAttemptsUsed=${retryAttemptsUsed}`,
+      null,
+    );
     setDemoRun(verificationRun.sourceRun);
     setVerificationOops(verificationRun);
     setSensorPacket(observationPacket);
+    setAuditSnapshot(observabilityAudit);
     setTaskText(verificationRun.sourceRun.task.operatorText);
     setManualControlState(verificationRun.oopsLoop.safeHoldActive ? "safe_hold" : "ready");
     setDemoRunState("complete");
@@ -290,6 +336,7 @@ export const App = () => {
   const resetDemoTask = () => {
     setDemoRun(null);
     setVerificationOops(null);
+    setAuditSnapshot(null);
     setDemoRunState("idle");
     setManualControlState("ready");
     setRetryAttemptsUsed(0);
@@ -498,6 +545,7 @@ export const App = () => {
           <article
             className="panel"
             data-vr10-verification-chain="ready"
+            data-vr11-verification-evidence="ready"
             data-vr10-outcome={verificationOops?.outcome ?? "pending"}
           >
             <h2>Verification</h2>
@@ -537,6 +585,79 @@ export const App = () => {
             </ol>
           </article>
 
+          <article
+            className="panel span-two"
+            data-vr11-audit-surface="ready"
+            data-vr11-replay-match={String(auditSnapshot?.replay.stateProgressionMatches ?? false)}
+            data-vr11-replay-key={String(auditSnapshot?.replay.apiKeyPresentInReplay ?? false)}
+          >
+            <h2>Replay</h2>
+            <div className="replay-controls" aria-label="Replay controls">
+              {(auditSnapshot?.replay.controls ?? replayControlRows).map((control) => (
+                <button key={control} type="button">
+                  {control.replace("_", " ")}
+                </button>
+              ))}
+            </div>
+            <div className="audit-grid">
+              <div>
+                <span>Replay id</span>
+                <strong>{auditSnapshot?.replay.replayId ?? "pending"}</strong>
+              </div>
+              <div>
+                <span>Progression</span>
+                <strong>{auditSnapshot?.replay.stateProgressionMatches ? "matched" : "awaiting run"}</strong>
+              </div>
+              <div>
+                <span>API key in replay</span>
+                <strong>{auditSnapshot?.replay.apiKeyPresentInReplay ? "detected" : "blocked"}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article className="panel" data-vr11-event-stream="ready">
+            <h2>Audit Stream</h2>
+            <ol className="trace-list">
+              {auditEvents.map((event) => (
+                <li key={event}>{event}</li>
+              ))}
+            </ol>
+          </article>
+
+          <article className="panel" data-vr11-memory-write="ready">
+            <h2>Memory Writes</h2>
+            <div className="audit-grid single-column">
+              {memoryWrites.map((memory) => (
+                <div key={memory.id}>
+                  <span>{memory.committed ? "committed" : "prepared"}</span>
+                  <strong>{memory.summary}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="panel" data-vr11-plan-history="ready">
+            <h2>Plan History</h2>
+            <div className="row-table">
+              {planHistory.map((entry) => (
+                <div key={entry.id}>
+                  <span>{entry.stepId}</span>
+                  <strong>{entry.label}</strong>
+                  <StatusPill tone={toPillTone(entry.state)}>{entry.state}</StatusPill>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="panel" data-vr11-redacted-trace="ready">
+            <h2>Trace Summary</h2>
+            <ol className="trace-list">
+              {redactedTrace.map((entry) => (
+                <li key={entry}>{entry}</li>
+              ))}
+            </ol>
+          </article>
+
           <article className="panel span-two" data-vr08-observation-boundary="ready">
             <h2>Observation Boundary</h2>
             <div className="observation-grid">
@@ -563,6 +684,7 @@ export const App = () => {
           <article
             className="panel span-two"
             data-vr10-oops-loop="bounded"
+            data-vr11-oops-episode="ready"
             data-vr10-retry-remaining={verificationOops?.oopsLoop.retryBudgetRemaining ?? 2}
             data-vr10-manual-control={manualControlState}
           >

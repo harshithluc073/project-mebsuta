@@ -8,6 +8,7 @@ import {
 import { createVisualRuntimeDemoRun } from "./demo_runtime";
 import { createVisualRuntimeExecutionGateRun } from "./execution_gate";
 import { createVisualRuntimeSensorPacket } from "./observation_firewall";
+import { createVisualRuntimeObservabilityAuditSnapshot } from "./observability_surface";
 import {
   VisualRuntimeProviderPlanTransport,
   createVisualRuntimeStructuredPlanningRun,
@@ -56,7 +57,7 @@ const createRuntimeStatus = (options: VisualRuntimeServerOptions) => {
     localOnly: true,
     commandBoundary: "vr_09_execution_gate_ready",
     worldSnapshotBoundary: "visual_scene_snapshot_ready",
-    eventStreamBoundary: "demo_telemetry_snapshot_ready",
+    eventStreamBoundary: "vr_11_audit_replay_ready",
     browserReceivesProviderKey: false,
     timestamp: createTimestamp(options),
   } as const;
@@ -152,6 +153,19 @@ export const createVisualRuntimeServer = (options: VisualRuntimeServerOptions = 
         response,
         200,
         createVisualRuntimeVerificationOopsRun({
+          taskId: requestUrl.searchParams.get("taskId") ?? undefined,
+          retryAttemptsUsed: Number(requestUrl.searchParams.get("retryAttemptsUsed") ?? 0),
+          now: options.now,
+        }),
+      );
+      return;
+    }
+
+    if (pathname === "/observability/audit") {
+      writeJson(
+        response,
+        200,
+        createVisualRuntimeObservabilityAuditSnapshot({
           taskId: requestUrl.searchParams.get("taskId") ?? undefined,
           retryAttemptsUsed: Number(requestUrl.searchParams.get("retryAttemptsUsed") ?? 0),
           now: options.now,

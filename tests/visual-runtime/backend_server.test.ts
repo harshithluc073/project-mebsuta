@@ -73,7 +73,7 @@ describe("visual runtime backend server", () => {
       localOnly: true,
       commandBoundary: "vr_09_execution_gate_ready",
       worldSnapshotBoundary: "visual_scene_snapshot_ready",
-      eventStreamBoundary: "demo_telemetry_snapshot_ready",
+      eventStreamBoundary: "vr_11_audit_replay_ready",
       browserReceivesProviderKey: false,
       timestamp: fixedTimestamp
     });
