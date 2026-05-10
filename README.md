@@ -70,16 +70,17 @@ The runtime is designed to preserve traces: prompts, validation decisions, memor
 
 ## Current Repository Status
 
-This public repository is a local TypeScript source release.
+This public repository is a local TypeScript source release with a runnable local visual runtime app.
 
 It includes:
 
 - Source foundations under `src`.
+- A local visual runtime under `apps/visual-runtime` with a browser frontend, local Node backend, deterministic demo mode, Three.js robot/world viewer, provider-readiness boundary, validation/execution/verification panels, replay and observability surfaces.
 - Focused tests under `tests`.
 - Local build, scan, and verification tooling.
 - MIT license.
 
-The local release is intended for source review, TypeScript validation, tests, build checks, and safety/security scans. It does not currently expose a top-level command that starts a finished interactive browser app, hosted API server, production database, or public authentication product.
+The local release is intended for source review, TypeScript validation, tests, build checks, safety/security scans, and local browser runtime experimentation. It now exposes local development commands for the visual runtime. It is still not a hosted production product, production database, public authentication product, physical robot controller, or turnkey deployment.
 
 It does not include:
 
@@ -142,11 +143,69 @@ npm run scan:secrets
 npm run scan:placeholders
 ```
 
+Run the visual runtime verification chain:
+
+```bash
+npm run verify:visual-runtime
+```
+
+That command typechecks the visual runtime, builds the local frontend, and runs the visual runtime scaffold verification script.
+
+## Run The Local Visual Runtime
+
+The visual runtime is local-first and runs with two local processes:
+
+```bash
+npm run dev:visual-runtime:backend
+```
+
+The backend listens on `http://127.0.0.1:4178`.
+
+In a second terminal:
+
+```bash
+npm run dev:visual-runtime:frontend
+```
+
+The frontend listens on `http://127.0.0.1:5178` and proxies `/api` requests to the local backend.
+
+Open `http://127.0.0.1:5178` in a browser. Demo mode requires no `.env` file and no model-provider API key. The UI currently exposes:
+
+- A local operational dashboard, not a marketing page.
+- A Three.js dog robot/world viewer built for the visual runtime.
+- Preset deterministic demo tasks.
+- Provider readiness status without exposing credentials to the browser.
+- Plan, validation, gate decision, execution, verification, event trace, observation-boundary, replay, memory, audit stream, and Oops Loop surfaces.
+- Manual hold, reset, retry, stop, and safe-hold controls for the local demo workflow.
+
+The visual runtime is still local software. It is not hosted, not production deployed, not connected to a production database, not a public login system, and not a physical robot readiness claim.
+
+## Optional Backend-Only Provider Configuration
+
+The visual runtime works without provider credentials. Optional provider configuration is read by the backend process environment only. The browser must never receive, display, store, log, or bundle the raw provider key.
+
+Safe variable names are documented in `.env.example`:
+
+- `LLM_PROVIDER`
+- `LLM_API_KEY`
+- `LLM_MODEL`
+- `LLM_BASE_URL`
+- `MEBSUTA_DEMO_MODE`
+
+Supported provider names in the current local source are `openai`, `gemini`, `anthropic`, and `local_compatible`. Set `MEBSUTA_DEMO_MODE` to `forced` or `true` to keep demo mode active even if provider variables exist.
+
+Do not commit `.env`, provider keys, raw provider logs, private runtime recordings, or local config files. Demo mode does not require paid services. If you choose to use an external model provider, any provider account or billing is outside the local demo requirement.
+
 ## Available Scripts
 
 - `npm run clean` removes generated local build output.
 - `npm run typecheck` runs the source TypeScript check.
+- `npm run typecheck:visual-runtime` runs the visual runtime TypeScript check.
 - `npm run build` cleans, compiles source, and writes local build metadata.
+- `npm run build:visual-runtime:frontend` builds the local visual runtime frontend.
+- `npm run dev:visual-runtime:backend` starts the local visual runtime backend on `127.0.0.1:4178`.
+- `npm run dev:visual-runtime:frontend` starts the local visual runtime frontend on `127.0.0.1:5178`.
+- `npm run verify:visual-runtime` verifies the local visual runtime source/build scaffold.
 - `npm run lint` runs ESLint.
 - `npm run format:check` checks formatting.
 - `npm run format` writes formatting changes.
@@ -165,6 +224,7 @@ npm run scan:placeholders
 ## Project Structure
 
 ```text
+apps/visual-runtime/  Local visual runtime frontend, backend, shared contracts, and viewer source
 src/                 TypeScript source foundations and contracts
 tests/               Focused local verification tests
 scripts/tooling/     Local build, scan, and cleanup tooling
@@ -186,7 +246,7 @@ Baseline verification does not require:
 - A model-provider API key.
 - A deployed frontend or backend.
 
-Generated or local-only artifacts such as `node_modules`, `dist`, `coverage`, logs, temporary folders, `.env` files, and local caches must stay out of Git.
+The visual runtime demo also runs without a model-provider key. Generated or local-only artifacts such as `node_modules`, `dist`, `coverage`, logs, temporary folders, `.env` files, and local caches must stay out of Git.
 
 ## Contributions
 
