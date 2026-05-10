@@ -149,7 +149,7 @@ Run the visual runtime verification chain:
 npm run verify:visual-runtime
 ```
 
-That command typechecks the visual runtime, builds the local frontend, and runs the visual runtime scaffold verification script.
+That command typechecks the visual runtime, runs the visual runtime test suite, builds the local frontend, and runs the visual runtime scaffold verification script.
 
 ## Run The Local Visual Runtime
 
@@ -180,6 +180,26 @@ Open `http://127.0.0.1:5178` in a browser. Demo mode requires no `.env` file and
 
 The visual runtime is still local software. It is not hosted, not production deployed, not connected to a production database, not a public login system, and not a physical robot readiness claim.
 
+## Final Local Visual Runtime Handoff
+
+Current local handoff status:
+
+- Install: `npm ci`
+- Full verification: `npm run verify:tooling`
+- Visual runtime verification: `npm run verify:visual-runtime`
+- Backend: `npm run dev:visual-runtime:backend`
+- Frontend: `npm run dev:visual-runtime:frontend`
+- Browser URL: `http://127.0.0.1:5178`
+
+Confirmed local behavior:
+
+- Demo mode runs without `.env` and without a model-provider API key.
+- The backend serves local health, runtime status, provider status, demo, execution, verification, observation, planning, and observability/audit endpoints.
+- The frontend loads through Vite, proxies `/api` to the local backend, and keeps provider credentials outside browser-facing source and responses.
+- The visual runtime includes automated checks for backend start, frontend start, browser app load, demo task flow, event/audit stream behavior, visual render evidence hooks, and no provider-key leak.
+
+Remaining future work is outside this local handoff: hosted deployment, production database, public authentication, paid CI/CD, physical robot integration, external model-provider account setup, and production operations are not part of this repository's current local runtime claim.
+
 ## Optional Backend-Only Provider Configuration
 
 The visual runtime works without provider credentials. Optional provider configuration is read by the backend process environment only. The browser must never receive, display, store, log, or bundle the raw provider key.
@@ -205,7 +225,7 @@ Do not commit `.env`, provider keys, raw provider logs, private runtime recordin
 - `npm run build:visual-runtime:frontend` builds the local visual runtime frontend.
 - `npm run dev:visual-runtime:backend` starts the local visual runtime backend on `127.0.0.1:4178`.
 - `npm run dev:visual-runtime:frontend` starts the local visual runtime frontend on `127.0.0.1:5178`.
-- `npm run verify:visual-runtime` verifies the local visual runtime source/build scaffold.
+- `npm run verify:visual-runtime` verifies the local visual runtime typecheck, tests, frontend build, and scaffold checks.
 - `npm run lint` runs ESLint.
 - `npm run format:check` checks formatting.
 - `npm run format` writes formatting changes.
