@@ -71,7 +71,7 @@ describe("visual runtime backend server", () => {
       status: "local_backend_ready",
       mode: "demo_ready",
       localOnly: true,
-      commandBoundary: "deterministic_demo_ready",
+      commandBoundary: "vr_09_execution_gate_ready",
       worldSnapshotBoundary: "visual_scene_snapshot_ready",
       eventStreamBoundary: "demo_telemetry_snapshot_ready",
       browserReceivesProviderKey: false,

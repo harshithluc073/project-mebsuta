@@ -7,6 +7,7 @@ import {
   VisualRuntimeDemoTask,
   VisualRuntimeDemoTaskId,
 } from "../../shared/src/demo_contracts";
+import { VisualRuntimeExecutionGateRun } from "../../shared/src/execution_gate_contracts";
 import { VisualRuntimeSensorPacket } from "../../shared/src/observation_contracts";
 import { VISUAL_RUNTIME_APP_DECISION } from "../../shared/src/runtime_contracts";
 import { RobotWorldViewer } from "./components/RobotWorldViewer";
@@ -187,7 +188,7 @@ export const App = () => {
   const [providerStatus, setProviderStatus] = useState<ProviderStatus>(fallbackProviderStatus);
   const [demoTasks, setDemoTasks] = useState<readonly VisualRuntimeDemoTask[]>(VISUAL_RUNTIME_DEMO_TASKS);
   const [selectedTaskId, setSelectedTaskId] = useState<VisualRuntimeDemoTaskId>(DEFAULT_VISUAL_RUNTIME_DEMO_TASK.id);
-  const [demoRun, setDemoRun] = useState<VisualRuntimeDemoRunSnapshot | null>(null);
+  const [demoRun, setDemoRun] = useState<VisualRuntimeExecutionGateRun | VisualRuntimeDemoRunSnapshot | null>(null);
   const [demoRunState, setDemoRunState] = useState<"idle" | "running" | "complete">("idle");
   const [sensorPacket, setSensorPacket] = useState<VisualRuntimeSensorPacket>(fallbackSensorPacket);
 
@@ -257,8 +258,8 @@ export const App = () => {
 
   const runDemoTask = async () => {
     setDemoRunState("running");
-    const run = await fetchJson<VisualRuntimeDemoRunSnapshot | null>(
-      `/demo/run?taskId=${encodeURIComponent(selectedTaskId)}`,
+    const run = await fetchJson<VisualRuntimeExecutionGateRun | null>(
+      `/execution/run?taskId=${encodeURIComponent(selectedTaskId)}`,
       null,
     );
 
@@ -282,6 +283,17 @@ export const App = () => {
     setDemoRunState("idle");
     setTaskText(selectedTask.operatorText);
   };
+
+  const gateDecision =
+    demoRun && "gateDecision" in demoRun
+      ? demoRun.gateDecision
+      : {
+          status: "safe_hold" as const,
+          blockReason: "none" as const,
+          safeHoldEntered: true,
+          executionPrimitive: "safe_hold" as const,
+          summary: "Awaiting VR-09 validation gate decision.",
+        };
 
   return (
     <main className="runtime-shell" data-runtime-shell="vr-06" data-vr06-demo-run={demoRunState}>
@@ -413,6 +425,32 @@ export const App = () => {
                 </div>
               ))}
             </div>
+          </article>
+
+          <article
+            className="panel"
+            data-vr09-execution-gate={gateDecision.status}
+            data-vr09-safe-hold={String(gateDecision.safeHoldEntered)}
+          >
+            <h2>Gate Decision</h2>
+            <dl>
+              <div>
+                <dt>Status</dt>
+                <dd>{gateDecision.status}</dd>
+              </div>
+              <div>
+                <dt>Reason</dt>
+                <dd>{gateDecision.blockReason}</dd>
+              </div>
+              <div>
+                <dt>Primitive</dt>
+                <dd>{gateDecision.executionPrimitive}</dd>
+              </div>
+              <div>
+                <dt>Summary</dt>
+                <dd>{gateDecision.summary}</dd>
+              </div>
+            </dl>
           </article>
 
           <article className="panel">

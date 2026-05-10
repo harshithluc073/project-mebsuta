@@ -6,6 +6,7 @@ import {
   loadVisualRuntimeProviderReadiness,
 } from "./config/provider_config";
 import { createVisualRuntimeDemoRun } from "./demo_runtime";
+import { createVisualRuntimeExecutionGateRun } from "./execution_gate";
 import { createVisualRuntimeSensorPacket } from "./observation_firewall";
 import {
   VisualRuntimeProviderPlanTransport,
@@ -52,7 +53,7 @@ const createRuntimeStatus = (options: VisualRuntimeServerOptions) => {
     status: "local_backend_ready",
     mode: providerStatus.mode,
     localOnly: true,
-    commandBoundary: "deterministic_demo_ready",
+    commandBoundary: "vr_09_execution_gate_ready",
     worldSnapshotBoundary: "visual_scene_snapshot_ready",
     eventStreamBoundary: "demo_telemetry_snapshot_ready",
     browserReceivesProviderKey: false,
@@ -126,6 +127,18 @@ export const createVisualRuntimeServer = (options: VisualRuntimeServerOptions = 
         response,
         200,
         createVisualRuntimeDemoRun({
+          taskId: requestUrl.searchParams.get("taskId") ?? undefined,
+          now: options.now,
+        }),
+      );
+      return;
+    }
+
+    if (pathname === "/execution/run") {
+      writeJson(
+        response,
+        200,
+        createVisualRuntimeExecutionGateRun({
           taskId: requestUrl.searchParams.get("taskId") ?? undefined,
           now: options.now,
         }),
