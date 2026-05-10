@@ -10,6 +10,7 @@ import {
 import { VisualRuntimeExecutionGateRun } from "../../shared/src/execution_gate_contracts";
 import { VisualRuntimeSensorPacket } from "../../shared/src/observation_contracts";
 import { VISUAL_RUNTIME_APP_DECISION } from "../../shared/src/runtime_contracts";
+import { VisualRuntimeVerificationOopsRun } from "../../shared/src/verification_oops_contracts";
 import { RobotWorldViewer } from "./components/RobotWorldViewer";
 
 import "./styles.css";
@@ -190,7 +191,10 @@ export const App = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<VisualRuntimeDemoTaskId>(DEFAULT_VISUAL_RUNTIME_DEMO_TASK.id);
   const [demoRun, setDemoRun] = useState<VisualRuntimeExecutionGateRun | VisualRuntimeDemoRunSnapshot | null>(null);
   const [demoRunState, setDemoRunState] = useState<"idle" | "running" | "complete">("idle");
+  const [manualControlState, setManualControlState] = useState<"ready" | "manual_stop" | "safe_hold">("ready");
+  const [retryAttemptsUsed, setRetryAttemptsUsed] = useState(0);
   const [sensorPacket, setSensorPacket] = useState<VisualRuntimeSensorPacket>(fallbackSensorPacket);
+  const [verificationOops, setVerificationOops] = useState<VisualRuntimeVerificationOopsRun | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -253,17 +257,20 @@ export const App = () => {
 
   const selectedTask =
     demoTasks.find((task) => task.id === selectedTaskId) ?? demoTasks[0] ?? DEFAULT_VISUAL_RUNTIME_DEMO_TASK;
-  const verificationEvidence = demoRun?.verification.evidence ?? ["awaiting deterministic demo task"];
+  const verificationEvidence =
+    verificationOops?.evidence.map((evidence) => evidence.summary) ??
+    demoRun?.verification.evidence ??
+    ["awaiting deterministic demo task"];
   const traceEntries = demoRun?.telemetry.map((event) => event.message) ?? traceRows;
 
   const runDemoTask = async () => {
     setDemoRunState("running");
-    const run = await fetchJson<VisualRuntimeExecutionGateRun | null>(
-      `/execution/run?taskId=${encodeURIComponent(selectedTaskId)}`,
+    const verificationRun = await fetchJson<VisualRuntimeVerificationOopsRun | null>(
+      `/verification/run?taskId=${encodeURIComponent(selectedTaskId)}&retryAttemptsUsed=${retryAttemptsUsed}`,
       null,
     );
 
-    if (!run) {
+    if (!verificationRun) {
       setDemoRunState("idle");
       return;
     }
@@ -272,16 +279,32 @@ export const App = () => {
       `/observation/packet?taskId=${encodeURIComponent(selectedTaskId)}`,
       fallbackSensorPacket,
     );
-    setDemoRun(run);
+    setDemoRun(verificationRun.sourceRun);
+    setVerificationOops(verificationRun);
     setSensorPacket(observationPacket);
-    setTaskText(run.task.operatorText);
+    setTaskText(verificationRun.sourceRun.task.operatorText);
+    setManualControlState(verificationRun.oopsLoop.safeHoldActive ? "safe_hold" : "ready");
     setDemoRunState("complete");
   };
 
   const resetDemoTask = () => {
     setDemoRun(null);
+    setVerificationOops(null);
     setDemoRunState("idle");
+    setManualControlState("ready");
+    setRetryAttemptsUsed(0);
     setTaskText(selectedTask.operatorText);
+  };
+
+  const requestBoundedRetry = () => {
+    if (!verificationOops?.oopsLoop.boundedRetryAllowed) {
+      return;
+    }
+
+    setRetryAttemptsUsed((current) =>
+      Math.min(verificationOops.oopsLoop.retryBudgetMax, current + 1),
+    );
+    setDemoRunState("idle");
   };
 
   const gateDecision =
@@ -307,7 +330,13 @@ export const App = () => {
             <button type="button" onClick={runDemoTask}>
               Submit
             </button>
-            <button type="button" onClick={() => setDemoRunState("idle")}>
+            <button
+              type="button"
+              onClick={() => {
+                setDemoRunState("idle");
+                setManualControlState("manual_stop");
+              }}
+            >
               Hold
             </button>
             <button type="button" onClick={resetDemoTask}>
@@ -466,24 +495,37 @@ export const App = () => {
             </div>
           </article>
 
-          <article className="panel">
+          <article
+            className="panel"
+            data-vr10-verification-chain="ready"
+            data-vr10-outcome={verificationOops?.outcome ?? "pending"}
+          >
             <h2>Verification</h2>
             <dl>
               <div>
                 <dt>Certificate</dt>
-                <dd>{demoRun?.verification.certificateId ?? "pending"}</dd>
+                <dd>{verificationOops?.certificateId ?? demoRun?.verification.certificateId ?? "pending"}</dd>
               </div>
               <div>
                 <dt>Evidence</dt>
                 <dd>{verificationEvidence[0]}</dd>
               </div>
               <div>
+                <dt>Failure</dt>
+                <dd>{verificationOops?.failure.message ?? "awaiting verification outcome"}</dd>
+              </div>
+              <div>
                 <dt>Result</dt>
                 <dd data-vr06-verification={demoRun?.verification.result ?? "pending"}>
-                  {demoRun?.verification.result ?? "not started"}
+                  {verificationOops?.outcome ?? demoRun?.verification.result ?? "not started"}
                 </dd>
               </div>
             </dl>
+            <ol className="trace-list">
+              {verificationEvidence.map((evidence) => (
+                <li key={evidence}>{evidence}</li>
+              ))}
+            </ol>
           </article>
 
           <article className="panel">
@@ -518,21 +560,45 @@ export const App = () => {
             </div>
           </article>
 
-          <article className="panel span-two">
+          <article
+            className="panel span-two"
+            data-vr10-oops-loop="bounded"
+            data-vr10-retry-remaining={verificationOops?.oopsLoop.retryBudgetRemaining ?? 2}
+            data-vr10-manual-control={manualControlState}
+          >
             <h2>Oops Loop</h2>
             <div className="oops-grid">
               <div>
                 <span>Retry budget</span>
-                <strong>3</strong>
+                <strong>
+                  {verificationOops
+                    ? `${verificationOops.oopsLoop.retryBudgetRemaining} / ${verificationOops.oopsLoop.retryBudgetMax}`
+                    : "2 / 2"}
+                </strong>
               </div>
               <div>
-                <span>Correction</span>
-                <strong>idle</strong>
+                <span>Correction proposal</span>
+                <strong>{verificationOops?.oopsLoop.correctionProposal.action ?? "awaiting verification outcome"}</strong>
               </div>
               <div>
                 <span>Safe hold</span>
-                <strong>armed</strong>
+                <strong>{manualControlState}</strong>
               </div>
+            </div>
+            <div className="control-strip">
+              <button
+                type="button"
+                disabled={!verificationOops?.oopsLoop.boundedRetryAllowed}
+                onClick={requestBoundedRetry}
+              >
+                Retry
+              </button>
+              <button type="button" onClick={() => setManualControlState("manual_stop")}>
+                Stop
+              </button>
+              <button type="button" onClick={() => setManualControlState("safe_hold")}>
+                Safe Hold
+              </button>
             </div>
           </article>
         </section>

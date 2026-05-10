@@ -48,6 +48,11 @@ button:nth-child(3) {
   color: #e8eeef;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .runtime-shell {
   display: grid;
   grid-template-columns: minmax(460px, 1.08fr) minmax(420px, 0.92fr);
@@ -491,6 +496,17 @@ dd {
 .oops-grid strong {
   color: #f4f2e6;
   font-size: 1rem;
+}
+
+.control-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.control-strip button {
+  min-width: 94px;
 }
 
 .status-pill {

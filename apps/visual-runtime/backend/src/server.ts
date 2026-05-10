@@ -12,6 +12,7 @@ import {
   VisualRuntimeProviderPlanTransport,
   createVisualRuntimeStructuredPlanningRun,
 } from "./provider_planning";
+import { createVisualRuntimeVerificationOopsRun } from "./verification_oops";
 import { VISUAL_RUNTIME_DEMO_TASKS } from "../../shared/src/demo_contracts";
 import {
   VISUAL_RUNTIME_APP_DECISION,
@@ -140,6 +141,19 @@ export const createVisualRuntimeServer = (options: VisualRuntimeServerOptions = 
         200,
         createVisualRuntimeExecutionGateRun({
           taskId: requestUrl.searchParams.get("taskId") ?? undefined,
+          now: options.now,
+        }),
+      );
+      return;
+    }
+
+    if (pathname === "/verification/run") {
+      writeJson(
+        response,
+        200,
+        createVisualRuntimeVerificationOopsRun({
+          taskId: requestUrl.searchParams.get("taskId") ?? undefined,
+          retryAttemptsUsed: Number(requestUrl.searchParams.get("retryAttemptsUsed") ?? 0),
           now: options.now,
         }),
       );
